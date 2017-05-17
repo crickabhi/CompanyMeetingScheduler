@@ -49,7 +49,7 @@ class Util
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
         dateFormatter.locale = Locale.init(identifier: "en_GB")
-        dateFormatter.dateFormat = "hh:mm"
+        dateFormatter.dateFormat = "HH:mm"
         let strDate = dateFormatter.string(from: dateObj)
         return strDate
     }

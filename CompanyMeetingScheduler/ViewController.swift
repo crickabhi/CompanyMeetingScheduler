@@ -14,7 +14,7 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
     @IBOutlet weak var scheduleMeetingButton: UIButton!
     @IBOutlet weak var settingsButton: UIButton!
     
-    var meetingJSON         : JSON?
+    var meetingData         : Array<AnyObject> = []
     var meetingDateToSee    = Date()
     
     var API = "http://fathomless-shelf-5846.herokuapp.com/api/schedule?date="
@@ -22,11 +22,13 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
     override func viewWillAppear(_ animated: Bool) {
         //let urlToUse : String = API + Util().dayMonthYearFromDate(date: meetingDateToSee)
         //self.getData(urlToUse: urlToUse)
-        self.meetingJSON = QueryHandler().returnLastMeeting()
-        if self.meetingJSON != nil && self.meetingJSON!.count > 0
+        self.meetingData = QueryHandler().returnLastMeeting()
+        if self.meetingData.count > 0
         {
             DispatchQueue.main.async(execute: { () -> Void in
                 self.tableView.reloadData()
+                self.meetingDateToSee = (self.meetingData[0] as AnyObject).value(forKey: "meetingDate") as! Date
+                self.navigationItem.title = Util().dayMonthYearFromDate(date: self.meetingDateToSee)
                 MBProgressHUD.hideAllHUDs(for: self.view, animated: true)
             })
         }
@@ -128,9 +130,9 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if self.meetingJSON != nil && self.meetingJSON!.count > 0
+        if self.meetingData.count > 0
         {
-            return meetingJSON!.count
+            return meetingData.count
         }
         else
         {
@@ -149,21 +151,21 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         var cell = TableViewCell()
-        
+        let cellInfo = meetingData[indexPath.row] as AnyObject
         if UIDevice.current.orientation == UIDeviceOrientation.landscapeLeft || UIDevice.current.orientation == UIDeviceOrientation.landscapeRight
         {
             cell = tableView.dequeueReusableCell(withIdentifier: "landscapeCell") as! TableViewCell
-            cell.meetingTime.text = Util().timeFormatChange(time: meetingJSON![indexPath.row]["start_time"].stringValue)
-            cell.meetingEndTime.text = Util().timeFormatChange(time: meetingJSON![indexPath.row]["end_time"].stringValue)
+            cell.meetingTime.text = Util().timeFormatChange(time: cellInfo.value(forKey: "startTime") as! String)
+            cell.meetingEndTime.text = Util().timeFormatChange(time: cellInfo.value(forKey: "endTime") as! String)
 
         }
         else
         {
             cell = tableView.dequeueReusableCell(withIdentifier: "potraitCell") as! TableViewCell
-            cell.meetingTime.text = Util().timeFormatChange(time: meetingJSON![indexPath.row]["start_time"].stringValue) + " - " + Util().timeFormatChange(time: meetingJSON![indexPath.row]["end_time"].stringValue)
+            cell.meetingTime.text = Util().timeFormatChange(time: cellInfo.value(forKey: "startTime") as! String) + " - " + Util().timeFormatChange(time: cellInfo.value(forKey: "endTime") as! String)
         }
         
-        cell.meetingDescription.text = meetingJSON![indexPath.row]["description"].stringValue
+        cell.meetingDescription.text = cellInfo.value(forKey: "meetingDescription") as? String
         return cell
     }
     
@@ -203,11 +205,18 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
             let json = try! JSONSerialization.jsonObject(with: data, options: [])
             print(JSON(json))
             
-            self.meetingJSON = JSON(json)
-            self.meetingJSON = JSON(self.meetingJSON!.array!.sorted{($0["start_time"] < $1["start_time"])})
-
-            QueryHandler().setLastMeeting(meetingInformation: self.meetingJSON!.arrayObject as! Array<AnyObject>)
+            let meetingJSON = JSON(json)
             
+            //self.meetingData = meetingJSON.array!.sorted{($0["start_time"] < $1["start_time"])}
+            QueryHandler().removeOldRecord()
+            for i in 0 ..< meetingJSON.count
+            {
+                QueryHandler().setLastMeeting(meetingInformation: meetingJSON[i], date : self.meetingDateToSee)
+            }
+            
+            self.meetingData = QueryHandler().returnLastMeeting()
+            self.meetingData.sort(by: {((($0 as AnyObject).value(forKey: "startTime") as! String) < (($1 as AnyObject).value(forKey: "startTime") as! String))})
+
             DispatchQueue.main.async(execute: { () -> Void in
                 self.tableView.reloadData()
                 self.navigationItem.title = Util().dayMonthYearFromDate(date: self.meetingDateToSee)
@@ -234,14 +243,7 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         if segue.identifier == "scheduleMeetingSegue" {
             let vc = segue.destination as! MeetingSchedulerViewController
             vc.dateValue = Util().dayMonthYearFromDate(date: self.meetingDateToSee)
-            if self.meetingJSON != nil
-            {
-                vc.meetingCount = self.meetingJSON!.count
-            }
-            else
-            {
-                vc.meetingCount = 0
-            }
+            vc.meetingCount = self.meetingData.count
         }
     }
     

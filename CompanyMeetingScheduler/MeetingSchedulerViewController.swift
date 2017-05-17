@@ -172,41 +172,23 @@ class MeetingSchedulerViewController: UIViewController, UITableViewDataSource, U
                     if self.startValue! > Util.workingStartTime && Util.workingEndTime > self.endValue! && self.endValue! > self.startValue!
                     {
                         let meetingDetails = QueryHandler().returnLastMeeting()
-                        if meetingDetails != nil
+                        var isAvailable : Bool = true
+                        
+                        for i in 0 ..< meetingDetails.count
                         {
-                            var isAvailable : Bool = true
-                            
-                            for i in 0 ..< meetingDetails!.count
+                            if self.startValue! > ((meetingDetails[i] as AnyObject).value(forKey: "endTime") as! String)
                             {
-                                if Util().timeFormatChange(time: meetingDetails![i]["start_time"].stringValue) <= self.startValue! || Util().timeFormatChange(time: meetingDetails![i]["start_time"].stringValue) >= self.endValue!
-                                {
-                                    isAvailable = false
-                                }
-                                else if Util().timeFormatChange(time: meetingDetails![i]["end_time"].stringValue) >= self.startValue! || Util().timeFormatChange(time: meetingDetails![i]["end_time"].stringValue) <= self.endValue!
-                                {
-                                    isAvailable = false
-                                }
-                                else
-                                {
-                                    isAvailable = true
-                                }
-                            }
-                            
-                            if isAvailable == true
-                            {
+                                isAvailable = true
                                 self.displayAlert(alertTitle : "Success", alertMessage : "Meeting scheduled successfully.")
                                 self.navigationController?.viewControllers.removeLast(self.navigationController!.viewControllers.count - 1)
+                                return
                             }
                             else
                             {
+                                isAvailable = false
                                 self.displayAlert(alertTitle : "Alert", alertMessage : "Sorry,meeting cannot be scheduled for the desired period because the slot is already occupied. Please schedule it for any other period.")
+                                return
                             }
-                        }
-                        else
-                        {
-                            self.displayAlert(alertTitle : "Success", alertMessage : "Meeting scheduled successfully.")
-                            self.navigationController?.viewControllers.removeLast(self.navigationController!.viewControllers.count - 1)
-                            
                         }
                     }
                     else if self.startValue! < Util.workingStartTime || Util.workingEndTime < self.endValue!

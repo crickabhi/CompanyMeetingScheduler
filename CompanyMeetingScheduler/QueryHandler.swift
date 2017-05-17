@@ -11,10 +11,9 @@ import CoreData
 
 class QueryHandler {
     
-    func setLastMeeting(meetingInformation : Array<AnyObject>)
+    func removeOldRecord()
     {
         let managedContext = CoreDataStack.sharedInstance.managedObjectContext
-        let entity =  NSEntityDescription.entity(forEntityName: "LastMeeting",in:managedContext)
         
         let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "LastMeeting")
         do {
@@ -26,8 +25,6 @@ class QueryHandler {
                     managedContext.delete(group[i])
                 }
             }
-            let msgupdate = NSManagedObject(entity: entity!,insertInto: managedContext)
-            msgupdate.setValue(meetingInformation,forKey: "meetingInformation")
             do {
                 try managedContext.save()
             }
@@ -38,8 +35,54 @@ class QueryHandler {
         }  catch let error as NSError {
             print("Could not fetch \(error), \(error.userInfo)")
         }
+
+    }
+
+    func setLastMeeting(meetingInformation : JSON, date : Date)
+    {
+        let managedContext = CoreDataStack.sharedInstance.managedObjectContext
+        let entity =  NSEntityDescription.entity(forEntityName: "LastMeeting",in:managedContext)
+        
+        do {
+            let msgupdate = NSManagedObject(entity: entity!,insertInto: managedContext)
+            msgupdate.setValue(meetingInformation["start_time"].stringValue,forKey: "startTime")
+            msgupdate.setValue(meetingInformation["end_time"].stringValue,forKey: "endTime")
+            msgupdate.setValue(meetingInformation["description"].stringValue,forKey: "meetingDescription")
+            msgupdate.setValue(meetingInformation["participants"].arrayObject,forKey: "participants")
+            msgupdate.setValue(date,forKey: "meetingDate")
+
+            do {
+                try managedContext.save()
+            }
+            catch
+            {
+                print(error)
+            }
+        }
     }
     
+    func returnLastMeeting() -> Array<AnyObject>
+    {
+        var returnValue : Array<AnyObject> = []
+        
+        let managedContext = CoreDataStack.sharedInstance.managedObjectContext
+        
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "LastMeeting")
+        do {
+            let results = try managedContext.fetch(fetchRequest)
+            let group = results as! [NSManagedObject]
+            if group.count > 0{
+                for i in 0  ..< group.count
+                {
+                    returnValue.append(group[i] as AnyObject)
+                }
+            }
+        }  catch let error as NSError {
+            print("Could not fetch \(error), \(error.userInfo)")
+        }
+        return returnValue
+    }
+
     func setCompanyMeetingSettings(startingWorkingHours : String, endingWorkingHours : String, slotInterval : Int, workingDays : Array<String>)
     {
         let managedContext = CoreDataStack.sharedInstance.managedObjectContext
@@ -98,21 +141,4 @@ class QueryHandler {
         return (start,end,slot,days)
     }
     
-    func returnLastMeeting() -> JSON?
-    {
-        var returnValue : JSON?
-        let managedContext = CoreDataStack.sharedInstance.managedObjectContext
-        
-        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "LastMeeting")
-        do {
-            let results = try managedContext.fetch(fetchRequest)
-            let group = results as! [NSManagedObject]
-            if group.count > 0{
-                returnValue = JSON(group[0])
-            }
-        }  catch let error as NSError {
-            print("Could not fetch \(error), \(error.userInfo)")
-        }
-        return returnValue
-    }
 }
