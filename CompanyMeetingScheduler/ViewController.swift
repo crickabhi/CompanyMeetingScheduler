@@ -14,6 +14,8 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
     @IBOutlet weak var scheduleMeetingButton: UIButton!
     @IBOutlet weak var settingsButton: UIButton!
     
+    var refreshControl = UIRefreshControl()
+
     var meetingData         : Array<AnyObject> = []
     var meetingDateToSee    = Date()
     
@@ -65,6 +67,9 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
             Util.workingDays = settingValues.3
         }
         
+        self.refreshControl.addTarget(self, action: #selector(ViewController.refresh), for: UIControlEvents.valueChanged)
+        self.tableView?.addSubview(refreshControl)
+
         self.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Next", style: .done, target: self, action: #selector(ViewController.getNextMeetings))
         self.navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Previous", style: .done, target: self, action: #selector(ViewController.getPreviousMeetings))
         self.navigationItem.rightBarButtonItem?.tintColor = UIColor.white
@@ -73,6 +78,11 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         // Do any additional setup after loading the view, typically from a nib.
     }
 
+    func refresh(sender : AnyObject) {
+        let urlToUse : String = API + Util().dayMonthYearFromDate(date: meetingDateToSee)
+        self.getData(urlToUse: urlToUse)
+    }
+    
     func getPreviousMeetings()
     {
         let meetingDate = Calendar.current.date(byAdding: .day, value: -1, to: meetingDateToSee)
@@ -218,6 +228,10 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
             self.meetingData.sort(by: {((($0 as AnyObject).value(forKey: "startTime") as! String) < (($1 as AnyObject).value(forKey: "startTime") as! String))})
 
             DispatchQueue.main.async(execute: { () -> Void in
+                if self.refreshControl.isRefreshing
+                {
+                    self.refreshControl.endRefreshing()
+                }
                 self.tableView.reloadData()
                 self.navigationItem.title = Util().dayMonthYearFromDate(date: self.meetingDateToSee)
                 MBProgressHUD.hideAllHUDs(for: self.view, animated: true)
